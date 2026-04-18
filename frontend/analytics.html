@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Disaster Response AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="content-area">
+        <div style="margin-bottom: 24px;">
+            <h1 style="font-size: 24px; font-weight: 500;">📊 Analytics Dashboard</h1>
+            <p style="color: var(--text-secondary);">Real-time insights and performance metrics</p>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #e8f0fe;">
+                    <span class="material-icons" style="color: var(--primary-color);">check_circle</span>
+                </div>
+                <div class="stat-value" id="resolvedDisasters">-</div>
+                <div class="stat-label">Resolved Disasters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #e6f4ea;">
+                    <span class="material-icons" style="color: var(--success-color);">mission</span>
+                </div>
+                <div class="stat-value" id="completedMissions">-</div>
+                <div class="stat-label">Completed Missions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #fef7e0;">
+                    <span class="material-icons" style="color: var(--warning-color);">schedule</span>
+                </div>
+                <div class="stat-value" id="avgResponseTime">-</div>
+                <div class="stat-label">Avg Response Time</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #fce8e6;">
+                    <span class="material-icons" style="color: var(--danger-color);">volunteer_activism</span>
+                </div>
+                <div class="stat-value" id="activeVolunteers">-</div>
+                <div class="stat-label">Active Volunteers</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Disaster Distribution by Type</h3>
+                </div>
+                <canvas id="disasterTypeChart" height="250"></canvas>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Performance Metrics</h3>
+                </div>
+                <canvas id="performanceChart" height="250"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Recent Activity Timeline</h3>
+            </div>
+            <div id="activityTimeline">
+                <div class="loading">Loading activity...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let disasterTypeChart = null;
+        let performanceChart = null;
+
+        async function loadAnalytics() {
+            try {
+                const response = await fetch(`${API_URL}/analytics/dashboard`);
+                const data = await response.json();
+                
+                // Update stats
+                document.getElementById('resolvedDisasters').textContent = data.stats.disasters.resolved;
+                document.getElementById('completedMissions').textContent = data.stats.assignments.completed;
+                document.getElementById('avgResponseTime').textContent = `${data.stats.avgResponseTime} min`;
+                document.getElementById('activeVolunteers').textContent = data.stats.volunteers.available;
+                
+                // Update charts
+                updateDisasterTypeChart(data.disasterTypes);
+                updatePerformanceChart(data.stats);
+                
+                // Update timeline
+                updateTimeline(data.recentAssignments);
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+
+        function updateDisasterTypeChart(disasterTypes) {
+            const ctx = document.getElementById('disasterTypeChart').getContext('2d');
+            
+            const labels = disasterTypes.map(d => d._id.charAt(0).toUpperCase() + d._id.slice(1));
+            const counts = disasterTypes.map(d => d.count);
+            
+            if (disasterTypeChart) {
+                disasterTypeChart.destroy();
+            }
+            
+            disasterTypeChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: ['#1a73e8', '#34a853', '#e37400', '#d93025', '#8e24aa', '#00acc1'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updatePerformanceChart(stats) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            if (performanceChart) {
+                performanceChart.destroy();
+            }
+            
+            performanceChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Total', 'Active', 'Resolved', 'Completed'],
+                    datasets: [{
+                        label: 'Disasters',
+                        data: [stats.disasters.total, stats.disasters.active, stats.disasters.resolved, 0],
+                        backgroundColor: '#1a73e8',
+                        borderRadius: 8
+                    }, {
+                        label: 'Assignments',
+                        data: [0, 0, 0, stats.assignments.completed],
+                        backgroundColor: '#34a853',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#e0e0e0'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTimeline(assignments) {
+            const container = document.getElementById('activityTimeline');
+            
+            if (!assignments || assignments.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px;">No recent activity</div>';
+                return;
+            }
+            
+            container.innerHTML = assignments.map(assignment => `
+                <div style="display: flex; gap: 16px; padding: 16px; border-bottom: 1px solid var(--border-color);">
+                    <div style="width: 40px; height: 40px; background: #e8f0fe; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <span class="material-icons" style="color: var(--primary-color);">assignment_turned_in</span>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500;">Volunteer ${assignment.volunteer?.name || 'Unknown'} assigned to ${assignment.disaster?.type || 'disaster'}</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">
+                            Location: ${assignment.disaster?.location || 'Unknown'} • Match Score: ${assignment.matchScore}%
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                            ${new Date(assignment.assignedAt).toLocaleString()}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Auto-refresh every 30 seconds
+        loadAnalytics();
+        setInterval(loadAnalytics, 30000);
+    </script>
+</body>
+</html>

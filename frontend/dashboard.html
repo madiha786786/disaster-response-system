@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Disaster Response AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        .recent-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .recent-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .recent-item:last-child {
+            border-bottom: none;
+        }
+        .score-badge {
+            background: var(--primary-color);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="content-area">
+        <!-- Stats Cards -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #e8f0fe;">
+                    <span class="material-icons" style="color: var(--primary-color);">warning</span>
+                </div>
+                <div class="stat-value" id="totalDisasters">-</div>
+                <div class="stat-label">Total Disasters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #fce8e6;">
+                    <span class="material-icons" style="color: var(--danger-color);">emergency</span>
+                </div>
+                <div class="stat-value" id="activeDisasters">-</div>
+                <div class="stat-label">Active Disasters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #e6f4ea;">
+                    <span class="material-icons" style="color: var(--success-color);">people</span>
+                </div>
+                <div class="stat-value" id="totalVolunteers">-</div>
+                <div class="stat-label">Total Volunteers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #fef7e0;">
+                    <span class="material-icons" style="color: var(--warning-color);">check_circle</span>
+                </div>
+                <div class="stat-value" id="availableVolunteers">-</div>
+                <div class="stat-label">Available Volunteers</div>
+            </div>
+        </div>
+
+        <!-- Two Column Layout -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Urgent Disasters -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">🚩 Top Urgent Disasters</h3>
+                    <button class="btn btn-outline" onclick="viewAllDisasters()">View All</button>
+                </div>
+                <div id="urgentDisasters" class="recent-list">
+                    <div class="loading">Loading disasters...</div>
+                </div>
+            </div>
+
+            <!-- Recent Assignments -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Assignments</h3>
+                    <button class="btn btn-outline" onclick="viewAllocations()">View All</button>
+                </div>
+                <div id="recentAssignments" class="recent-list">
+                    <div class="loading">Loading assignments...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">⚡︎ Quick Actions</h3>
+            </div>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="openAddDisaster()">
+                    <span class="material-icons" style="font-size: 18px; vertical-align: middle;">add</span>
+                    Register Disaster
+                </button>
+                <button class="btn btn-primary" onclick="openAddVolunteer()">
+                    <span class="material-icons" style="font-size: 18px; vertical-align: middle;">person_add</span>
+                    Register Volunteer
+                </button>
+                <button class="btn btn-outline" onclick="runAutoAllocation()">
+                    <span class="material-icons" style="font-size: 18px; vertical-align: middle;">auto_awesome</span>
+                    Run AI Auto-Allocation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Disaster Modal -->
+    <div id="disasterModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Register New Disaster</h3>
+                <span class="material-icons" onclick="closeModal('disasterModal')" style="cursor: pointer;">close</span>
+            </div>
+            <div class="modal-body">
+                <form id="disasterForm">
+                    <div class="form-group">
+                        <label>Location *</label>
+                        <input type="text" id="disasterLocation" required placeholder="e.g., Downtown, City Center">
+                    </div>
+                    <div class="form-group">
+                        <label>Disaster Type *</label>
+                        <select id="disasterType" required>
+                            <option value="rescue">Rescue Operation</option>
+                            <option value="flood">Flood</option>
+                            <option value="medical">Medical Emergency</option>
+                            <option value="fire">Fire</option>
+                            <option value="accident">Accident</option>
+                            <option value="food">Food Distribution</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Urgency Level *</label>
+                        <select id="disasterUrgency" required>
+                            <option value="high">High - Immediate Response Needed</option>
+                            <option value="medium">Medium - Respond Within Hour</option>
+                            <option value="low">Low - Can Wait</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>People Affected *</label>
+                        <input type="number" id="disasterPeople" required min="1" placeholder="Number of people affected">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('disasterModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitDisaster()">Register Disaster</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Volunteer Modal -->
+    <div id="volunteerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Register New Volunteer</h3>
+                <span class="material-icons" onclick="closeModal('volunteerModal')" style="cursor: pointer;">close</span>
+            </div>
+            <div class="modal-body">
+                <form id="volunteerForm">
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" id="volunteerName" required placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" id="volunteerEmail" required placeholder="john@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone *</label>
+                        <input type="tel" id="volunteerPhone" required placeholder="+1234567890">
+                    </div>
+                    <div class="form-group">
+                        <label>Current Location *</label>
+                        <input type="text" id="volunteerLocation" required placeholder="City, Area">
+                    </div>
+                    <div class="form-group">
+                        <label>Skills *</label>
+                        <select id="volunteerSkills" required>
+                            <option value="rescue">Rescue Operations</option>
+                            <option value="medical">Medical Assistance</option>
+                            <option value="fire">Fire Fighting</option>
+                            <option value="flood">Flood Rescue</option>
+                            <option value="accident">Accident Response</option>
+                            <option value="food">Food Distribution</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Availability *</label>
+                        <select id="volunteerAvailability" required>
+                            <option value="free">Available Now</option>
+                            <option value="busy">Currently Busy</option>
+                            <option value="offline">Offline</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Estimated Reach Time (minutes) *</label>
+                        <input type="number" id="volunteerTime" required min="1" max="180" placeholder="30">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('volunteerModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitVolunteer()">Register Volunteer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`${API_URL}/analytics/dashboard`);
+                const data = await response.json();
+                
+                // Update stats
+                document.getElementById('totalDisasters').textContent = data.stats.disasters.total;
+                document.getElementById('activeDisasters').textContent = data.stats.disasters.active;
+                document.getElementById('totalVolunteers').textContent = data.stats.volunteers.total;
+                document.getElementById('availableVolunteers').textContent = data.stats.volunteers.available;
+                
+                // Load urgent disasters
+                displayUrgentDisasters(data.urgentDisasters);
+                
+                // Load recent assignments
+                displayRecentAssignments(data.recentAssignments);
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showError('Failed to load dashboard data');
+            }
+        }
+
+        function displayUrgentDisasters(disasters) {
+            const container = document.getElementById('urgentDisasters');
+            if (!disasters || disasters.length === 0) {
+                container.innerHTML = '<div class="loading">No urgent disasters</div>';
+                return;
+            }
+            
+            container.innerHTML = disasters.map(disaster => `
+                <div class="recent-item">
+                    <div>
+                        <div style="font-weight: 500;">${disaster.location}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">
+                            ${disaster.type} • ${disaster.peopleAffected} people
+                        </div>
+                    </div>
+                    <div>
+                        <span class="badge badge-${disaster.urgency}">${disaster.urgency.toUpperCase()}</span>
+                        <span class="score-badge" style="margin-left: 8px;">Score: ${disaster.priorityScore}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayRecentAssignments(assignments) {
+            const container = document.getElementById('recentAssignments');
+            if (!assignments || assignments.length === 0) {
+                container.innerHTML = '<div class="loading">No recent assignments</div>';
+                return;
+            }
+            
+            container.innerHTML = assignments.map(assignment => `
+                <div class="recent-item">
+                    <div>
+                        <div style="font-weight: 500;">${assignment.volunteer?.name || 'Unknown'}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">
+                            Assigned to: ${assignment.disaster?.location || 'Unknown'}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="score-badge">Match: ${assignment.matchScore}%</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function runAutoAllocation() {
+            try {
+                const response = await fetch(`${API_URL}/allocation/auto-assign`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                alert(`✅ Auto-allocation complete!\nAssigned ${result.assignments.length} disasters`);
+                loadDashboard();
+            } catch (error) {
+                console.error('Error running auto allocation:', error);
+                alert('Failed to run auto allocation');
+            }
+        }
+
+        function openAddDisaster() {
+            document.getElementById('disasterModal').classList.add('active');
+        }
+
+        function openAddVolunteer() {
+            document.getElementById('volunteerModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function submitDisaster() {
+            const disaster = {
+                location: document.getElementById('disasterLocation').value,
+                type: document.getElementById('disasterType').value,
+                urgency: document.getElementById('disasterUrgency').value,
+                peopleAffected: parseInt(document.getElementById('disasterPeople').value)
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/disasters`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(disaster)
+                });
+                
+                if (response.ok) {
+                    alert('✅ Disaster registered successfully!');
+                    closeModal('disasterModal');
+                    loadDashboard();
+                    document.getElementById('disasterForm').reset();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.message);
+                }
+            } catch (error) {
+                console.error('Error submitting disaster:', error);
+                alert('Failed to register disaster');
+            }
+        }
+
+        async function submitVolunteer() {
+            const volunteer = {
+                name: document.getElementById('volunteerName').value,
+                email: document.getElementById('volunteerEmail').value,
+                phone: document.getElementById('volunteerPhone').value,
+                location: document.getElementById('volunteerLocation').value,
+                skills: [document.getElementById('volunteerSkills').value],
+                availability: document.getElementById('volunteerAvailability').value,
+                reachTime: parseInt(document.getElementById('volunteerTime').value)
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/volunteers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(volunteer)
+                });
+                
+                if (response.ok) {
+                    alert('✅ Volunteer registered successfully!');
+                    closeModal('volunteerModal');
+                    loadDashboard();
+                    document.getElementById('volunteerForm').reset();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.message);
+                }
+            } catch (error) {
+                console.error('Error submitting volunteer:', error);
+                alert('Failed to register volunteer');
+            }
+        }
+
+        function viewAllDisasters() {
+            window.parent.location.href = 'disasters.html';
+        }
+
+        function viewAllocations() {
+            window.parent.location.href = 'allocation.html';
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--danger-color);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                z-index: 2000;
+                animation: slideIn 0.3s ease;
+            `;
+            errorDiv.textContent = message;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 3000);
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+    </script>
+</body>
+</html>

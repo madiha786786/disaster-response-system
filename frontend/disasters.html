@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disasters - Disaster Response AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="content-area">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h1 style="font-size: 24px; font-weight: 500;">Disaster Cases</h1>
+            <button class="btn btn-primary" onclick="openAddDisaster()">
+                <span class="material-icons" style="font-size: 18px; vertical-align: middle;">add</span>
+                Add Disaster
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <select id="statusFilter" onchange="loadDisasters()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+                <select id="typeFilter" onchange="loadDisasters()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <option value="all">All Types</option>
+                    <option value="rescue">Rescue</option>
+                    <option value="flood">Flood</option>
+                    <option value="medical">Medical</option>
+                    <option value="fire">Fire</option>
+                    <option value="accident">Accident</option>
+                    <option value="food">Food</option>
+                </select>
+                <button class="btn btn-outline" onclick="loadDisasters()">
+                    <span class="material-icons" style="font-size: 18px;">refresh</span>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Disasters Table -->
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Location</th>
+                        <th>Type</th>
+                        <th>Urgency</th>
+                        <th>People</th>
+                        <th>Status</th>
+                        <th>Priority Score</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="disastersTableBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center;">Loading disasters...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add Disaster Modal -->
+    <div id="disasterModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Register New Disaster</h3>
+                <span class="material-icons" onclick="closeModal('disasterModal')" style="cursor: pointer;">close</span>
+            </div>
+            <div class="modal-body">
+                <form id="disasterForm">
+                    <div class="form-group">
+                        <label>Location *</label>
+                        <input type="text" id="disasterLocation" required placeholder="e.g., Downtown, City Center">
+                    </div>
+                    <div class="form-group">
+                        <label>Coordinates (Optional)</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <input type="text" id="disasterLat" placeholder="Latitude">
+                            <input type="text" id="disasterLng" placeholder="Longitude">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Disaster Type *</label>
+                        <select id="disasterType" required>
+                            <option value="rescue">Rescue Operation</option>
+                            <option value="flood">Flood</option>
+                            <option value="medical">Medical Emergency</option>
+                            <option value="fire">Fire</option>
+                            <option value="accident">Accident</option>
+                            <option value="food">Food Distribution</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Urgency Level *</label>
+                        <select id="disasterUrgency" required>
+                            <option value="high">High - Immediate Response Needed</option>
+                            <option value="medium">Medium - Respond Within Hour</option>
+                            <option value="low">Low - Can Wait</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>People Affected *</label>
+                        <input type="number" id="disasterPeople" required min="1" placeholder="Number of people affected">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('disasterModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitDisaster()">Register Disaster</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disaster Detail Modal -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>Disaster Details</h3>
+                <span class="material-icons" onclick="closeModal('detailModal')" style="cursor: pointer;">close</span>
+            </div>
+            <div class="modal-body" id="detailContent">
+                Loading...
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('detailModal')">Close</button>
+                <button class="btn btn-primary" id="assignFromDetailBtn" onclick="assignFromDetail()">Assign Volunteer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let currentDisaster = null;
+
+        async function loadDisasters() {
+            try {
+                const status = document.getElementById('statusFilter').value;
+                const type = document.getElementById('typeFilter').value;
+                
+                let url = `${API_URL}/disasters`;
+                const response = await fetch(url);
+                let disasters = await response.json();
+                
+                // Apply filters
+                if (status !== 'all') {
+                    disasters = disasters.filter(d => d.status === status);
+                }
+                if (type !== 'all') {
+                    disasters = disasters.filter(d => d.type === type);
+                }
+                
+                displayDisasters(disasters);
+            } catch (error) {
+                console.error('Error loading disasters:', error);
+                document.getElementById('disastersTableBody').innerHTML = `
+                    <tr><td colspan="7" style="text-align: center; color: red;">Error loading disasters</td></tr>
+                `;
+            }
+        }
+
+        function displayDisasters(disasters) {
+            const tbody = document.getElementById('disastersTableBody');
+            
+            if (!disasters || disasters.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No disasters found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = disasters.map(disaster => `
+                <tr>
+                    <td>${disaster.location}</td>
+                    <td><span style="text-transform: capitalize;">${disaster.type}</span></td>
+                    <td><span class="badge badge-${disaster.urgency}">${disaster.urgency.toUpperCase()}</span></td>
+                    <td>${disaster.peopleAffected}</td>
+                    <td><span class="badge" style="background: ${getStatusColor(disaster.status)}">${disaster.status}</span></td>
+                    <td><strong>${disaster.priorityScore}</strong></td>
+                    <td>
+                        <button class="btn btn-outline" style="padding: 4px 12px; margin-right: 8px;" onclick="viewDetails('${disaster._id}')">
+                            View
+                        </button>
+                        ${disaster.status === 'pending' ? `
+                            <button class="btn btn-primary" style="padding: 4px 12px;" onclick="openRecommendation('${disaster._id}')">
+                                Assign
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'pending': return '#fef7e0';
+                case 'assigned': return '#e8f0fe';
+                case 'resolved': return '#e6f4ea';
+                default: return '#f1f3f4';
+            }
+        }
+
+        async function viewDetails(id) {
+            try {
+                const response = await fetch(`${API_URL}/disasters/${id}`);
+                const data = await response.json();
+                currentDisaster = data.disaster;
+                
+                const detailContent = document.getElementById('detailContent');
+                detailContent.innerHTML = `
+                    <div class="form-group">
+                        <label>Location</label>
+                        <div><strong>${data.disaster.location}</strong></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Type</label>
+                        <div><strong style="text-transform: capitalize;">${data.disaster.type}</strong></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Urgency</label>
+                        <div><span class="badge badge-${data.disaster.urgency}">${data.disaster.urgency.toUpperCase()}</span></div>
+                    </div>
+                    <div class="form-group">
+                        <label>People Affected</label>
+                        <div><strong>${data.disaster.peopleAffected}</strong></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Priority Score</label>
+                        <div><strong>${data.disaster.priorityScore}/100</strong></div>
+                    </div>
+                    ${data.disaster.assignedVolunteer ? `
+                        <div class="form-group">
+                            <label>Assigned Volunteer</label>
+                            <div><strong>${data.disaster.assignedVolunteer.name}</strong> (${data.disaster.assignedVolunteer.skills.join(', ')})</div>
+                        </div>
+                    ` : '<div class="form-group"><label>Status</label><div>Pending Assignment</div></div>'}
+                `;
+                
+                document.getElementById('detailModal').classList.add('active');
+            } catch (error) {
+                console.error('Error loading disaster details:', error);
+                alert('Failed to load disaster details');
+            }
+        }
+
+        async function openRecommendation(disasterId) {
+            window.parent.location.href = `allocation.html?disaster=${disasterId}`;
+        }
+
+        function assignFromDetail() {
+            if (currentDisaster) {
+                openRecommendation(currentDisaster._id);
+                closeModal('detailModal');
+            }
+        }
+
+        function openAddDisaster() {
+            document.getElementById('disasterModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function submitDisaster() {
+            const disaster = {
+                location: document.getElementById('disasterLocation').value,
+                type: document.getElementById('disasterType').value,
+                urgency: document.getElementById('disasterUrgency').value,
+                peopleAffected: parseInt(document.getElementById('disasterPeople').value),
+                coordinates: {}
+            };
+            
+            const lat = document.getElementById('disasterLat').value;
+            const lng = document.getElementById('disasterLng').value;
+            if (lat && lng) {
+                disaster.coordinates = { lat: parseFloat(lat), lng: parseFloat(lng) };
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/disasters`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(disaster)
+                });
+                
+                if (response.ok) {
+                    alert('✅ Disaster registered successfully!');
+                    closeModal('disasterModal');
+                    loadDisasters();
+                    document.getElementById('disasterForm').reset();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.message);
+                }
+            } catch (error) {
+                console.error('Error submitting disaster:', error);
+                alert('Failed to register disaster');
+            }
+        }
+
+        // Load disasters on page load
+        loadDisasters();
+    </script>
+</body>
+</html>

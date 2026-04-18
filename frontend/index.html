@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaster Response AI System</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="material-icons">crisis_alert</span>
+                <h2>DisasterAI</h2>
+            </div>
+            <nav class="nav-menu">
+                <a href="dashboard.html" class="nav-item active">
+                    <span class="material-icons">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="disasters.html" class="nav-item">
+                    <span class="material-icons">warning</span>
+                    <span>Disasters</span>
+                </a>
+                <a href="volunteers.html" class="nav-item">
+                    <span class="material-icons">people</span>
+                    <span>Volunteers</span>
+                </a>
+                <a href="allocation.html" class="nav-item">
+                    <span class="material-icons">psychology</span>
+                    <span>Smart Allocation</span>
+                </a>
+                <a href="analytics.html" class="nav-item">
+                    <span class="material-icons">analytics</span>
+                    <span>Analytics</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="search-bar">
+                    <span class="material-icons">search</span>
+                    <input type="text" placeholder="Search...">
+                </div>
+                <div class="user-menu">
+                    <span class="material-icons">notifications_none</span>
+                    <div class="user-avatar">
+                        <span>AD</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <iframe src="dashboard.html" frameborder="0" id="content-frame" style="width: 100%; height: calc(100vh - 70px);"></iframe>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Handle navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const href = item.getAttribute('href');
+                document.getElementById('content-frame').src = href;
+                
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                item.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

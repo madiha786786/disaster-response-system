@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volunteers - Disaster Response AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="content-area">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h1 style="font-size: 24px; font-weight: 500;">Volunteer Management</h1>
+            <button class="btn btn-primary" onclick="openAddVolunteer()">
+                <span class="material-icons" style="font-size: 18px; vertical-align: middle;">person_add</span>
+                Add Volunteer
+            </button>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+                <select id="availabilityFilter" onchange="loadVolunteers()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <option value="all">All Status</option>
+                    <option value="free">Available</option>
+                    <option value="busy">Busy</option>
+                    <option value="offline">Offline</option>
+                </select>
+                <select id="skillFilter" onchange="loadVolunteers()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <option value="all">All Skills</option>
+                    <option value="rescue">Rescue</option>
+                    <option value="medical">Medical</option>
+                    <option value="fire">Fire</option>
+                    <option value="flood">Flood</option>
+                    <option value="accident">Accident</option>
+                    <option value="food">Food</option>
+                </select>
+                <button class="btn btn-outline" onclick="loadVolunteers()">
+                    <span class="material-icons" style="font-size: 18px;">refresh</span>
+                    Refresh
+                </button>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Contact</th>
+                            <th>Location</th>
+                            <th>Skills</th>
+                            <th>Status</th>
+                            <th>Response Time</th>
+                            <th>Missions</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="volunteersTableBody">
+                        <tr><td colspan="8" style="text-align: center;">Loading volunteers...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Volunteer Modal -->
+    <div id="volunteerModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Register New Volunteer</h3>
+                <span class="material-icons" onclick="closeModal('volunteerModal')" style="cursor: pointer;">close</span>
+            </div>
+            <div class="modal-body">
+                <form id="volunteerForm">
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" id="volunteerName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" id="volunteerEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone *</label>
+                        <input type="tel" id="volunteerPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Current Location *</label>
+                        <input type="text" id="volunteerLocation" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Skills *</label>
+                        <select id="volunteerSkills" required>
+                            <option value="rescue">Rescue Operations</option>
+                            <option value="medical">Medical Assistance</option>
+                            <option value="fire">Fire Fighting</option>
+                            <option value="flood">Flood Rescue</option>
+                            <option value="accident">Accident Response</option>
+                            <option value="food">Food Distribution</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Availability *</label>
+                        <select id="volunteerAvailability" required>
+                            <option value="free">Available Now</option>
+                            <option value="busy">Currently Busy</option>
+                            <option value="offline">Offline</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Estimated Reach Time (minutes) *</label>
+                        <input type="number" id="volunteerTime" required min="1" max="180">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('volunteerModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitVolunteer()">Register</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        async function loadVolunteers() {
+            try {
+                const availability = document.getElementById('availabilityFilter').value;
+                const skill = document.getElementById('skillFilter').value;
+                
+                let url = `${API_URL}/volunteers`;
+                if (availability !== 'all') url += `?availability=${availability}`;
+                if (skill !== 'all') url += `${availability !== 'all' ? '&' : '?'}skill=${skill}`;
+                
+                const response = await fetch(url);
+                const volunteers = await response.json();
+                displayVolunteers(volunteers);
+            } catch (error) {
+                console.error('Error loading volunteers:', error);
+            }
+        }
+
+        function displayVolunteers(volunteers) {
+            const tbody = document.getElementById('volunteersTableBody');
+            
+            if (!volunteers || volunteers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No volunteers found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = volunteers.map(volunteer => `
+                <tr>
+                    <td><strong>${volunteer.name}</strong></td>
+                    <td>${volunteer.email}<br><small>${volunteer.phone}</small></td>
+                    <td>${volunteer.location}</td>
+                    <td><span class="badge" style="background: #e8f0fe;">${volunteer.skills.join(', ')}</span></td>
+                    <td><span class="badge" style="background: ${getAvailabilityColor(volunteer.availability)}">${volunteer.availability}</span></td>
+                    <td>${volunteer.reachTime} mins</td>
+                    <td>${volunteer.totalMissions || 0}</td>
+                    <td>
+                        <button class="btn btn-outline" style="padding: 4px 12px;" onclick="editVolunteer('${volunteer._id}')">
+                            Edit
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getAvailabilityColor(availability) {
+            switch(availability) {
+                case 'free': return '#e6f4ea';
+                case 'busy': return '#fef7e0';
+                default: return '#f1f3f4';
+            }
+        }
+
+        function openAddVolunteer() {
+            document.getElementById('volunteerModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function submitVolunteer() {
+            const volunteer = {
+                name: document.getElementById('volunteerName').value,
+                email: document.getElementById('volunteerEmail').value,
+                phone: document.getElementById('volunteerPhone').value,
+                location: document.getElementById('volunteerLocation').value,
+                skills: [document.getElementById('volunteerSkills').value],
+                availability: document.getElementById('volunteerAvailability').value,
+                reachTime: parseInt(document.getElementById('volunteerTime').value)
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/volunteers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(volunteer)
+                });
+                
+                if (response.ok) {
+                    alert('✅ Volunteer registered successfully!');
+                    closeModal('volunteerModal');
+                    loadVolunteers();
+                    document.getElementById('volunteerForm').reset();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.message);
+                }
+            } catch (error) {
+                console.error('Error submitting volunteer:', error);
+                alert('Failed to register volunteer');
+            }
+        }
+
+        function editVolunteer(id) {
+            alert('Edit functionality coming soon');
+        }
+
+        loadVolunteers();
+    </script>
+</body>
+</html>
