@@ -6,6 +6,43 @@
     <title>Volunteers - Disaster Response AI</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        .location-btn {
+            background: #e8f0fe;
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 8px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .location-btn:hover {
+            background: #d2e3fc;
+        }
+        .live-location {
+            font-size: 12px;
+            color: var(--success-color);
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #34a853;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.5; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.2); }
+        }
+    </style>
 </head>
 <body>
     <div class="content-area">
@@ -50,12 +87,13 @@
                             <th>Skills</th>
                             <th>Status</th>
                             <th>Response Time</th>
+                            <th>Distance</th>
                             <th>Missions</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="volunteersTableBody">
-                        <tr><td colspan="8" style="text-align: center;">Loading volunteers...</td></tr>
+                        <tr><td colspan="9" style="text-align: center;">Loading volunteers...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -85,7 +123,15 @@
                     </div>
                     <div class="form-group">
                         <label>Current Location *</label>
-                        <input type="text" id="volunteerLocation" required>
+                        <input type="text" id="volunteerLocation" required placeholder="City, Area">
+                        <button type="button" class="location-btn" onclick="getCurrentLocation()">
+                            <span class="material-icons" style="font-size: 18px;">my_location</span>
+                            📍 Auto-Detect My Location
+                        </button>
+                        <div id="liveLocationStatus" class="live-location" style="display: none;">
+                            <span class="pulse-dot"></span>
+                            Live location tracking active
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Skills *</label>
@@ -110,6 +156,8 @@
                         <label>Estimated Reach Time (minutes) *</label>
                         <input type="number" id="volunteerTime" required min="1" max="180">
                     </div>
+                    <input type="hidden" id="volunteerLat">
+                    <input type="hidden" id="volunteerLng">
                 </form>
             </div>
             <div class="modal-footer">
@@ -120,7 +168,86 @@
     </div>
 
     <script>
-        const API_URL = 'https://disaster-response-system-hd8a.onrender.com/api';
+        const API_URL = 'http://localhost:5001/api';
+        let watchId = null;
+        let currentLocation = null;
+
+        // Auto-detect current location
+        function getCurrentLocation() {
+            const statusDiv = document.getElementById('liveLocationStatus');
+            
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser');
+                return;
+            }
+
+            statusDiv.style.display = 'flex';
+            statusDiv.innerHTML = '<span class="pulse-dot"></span> Detecting location...';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    currentLocation = { lat, lng };
+                    
+                    document.getElementById('volunteerLat').value = lat;
+                    document.getElementById('volunteerLng').value = lng;
+                    
+                    // Reverse geocode to get address
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            const address = data.display_name || `${lat}, ${lng}`;
+                            document.getElementById('volunteerLocation').value = address;
+                            statusDiv.innerHTML = '<span class="pulse-dot"></span> ✅ Location detected! Live tracking active';
+                            
+                            // Start continuous tracking
+                            startLiveTracking();
+                        })
+                        .catch(() => {
+                            document.getElementById('volunteerLocation').value = `${lat}, ${lng}`;
+                            statusDiv.innerHTML = '<span class="pulse-dot"></span> ✅ Location detected! Live tracking active';
+                            startLiveTracking();
+                        });
+                },
+                (error) => {
+                    console.error('Location error:', error);
+                    statusDiv.style.display = 'none';
+                    alert('Unable to get location. Please enter manually.');
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        // Continuous location tracking
+        function startLiveTracking() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+            
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const lat = position.coordinates.latitude;
+                    const lng = position.coordinates.longitude;
+                    currentLocation = { lat, lng };
+                    
+                    document.getElementById('volunteerLat').value = lat;
+                    document.getElementById('volunteerLng').value = lng;
+                    
+                    // Update address periodically
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.display_name) {
+                                document.getElementById('volunteerLocation').value = data.display_name;
+                            }
+                        })
+                        .catch(() => {});
+                },
+                (error) => console.error('Tracking error:', error),
+                { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 }
+            );
+        }
 
         async function loadVolunteers() {
             try {
@@ -143,7 +270,7 @@
             const tbody = document.getElementById('volunteersTableBody');
             
             if (!volunteers || volunteers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No volunteers found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">No volunteers found</td></tr>';
                 return;
             }
             
@@ -151,10 +278,11 @@
                 <tr>
                     <td><strong>${volunteer.name}</strong></td>
                     <td>${volunteer.email}<br><small>${volunteer.phone}</small></td>
-                    <td>${volunteer.location}</td>
+                    <td>${volunteer.location || 'Unknown'}</td>
                     <td><span class="badge" style="background: #e8f0fe;">${volunteer.skills.join(', ')}</span></td>
                     <td><span class="badge" style="background: ${getAvailabilityColor(volunteer.availability)}">${volunteer.availability}</span></td>
                     <td>${volunteer.reachTime} mins</td>
+                    <td>${volunteer.distanceToDisaster ? volunteer.distanceToDisaster.toFixed(1) + ' km' : '-'}</td>
                     <td>${volunteer.totalMissions || 0}</td>
                     <td>
                         <button class="btn btn-outline" style="padding: 4px 12px;" onclick="editVolunteer('${volunteer._id}')">
@@ -178,6 +306,10 @@
         }
 
         function closeModal(modalId) {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
             document.getElementById(modalId).classList.remove('active');
         }
 
@@ -189,7 +321,11 @@
                 location: document.getElementById('volunteerLocation').value,
                 skills: [document.getElementById('volunteerSkills').value],
                 availability: document.getElementById('volunteerAvailability').value,
-                reachTime: parseInt(document.getElementById('volunteerTime').value)
+                reachTime: parseInt(document.getElementById('volunteerTime').value),
+                coordinates: {
+                    lat: parseFloat(document.getElementById('volunteerLat').value) || null,
+                    lng: parseFloat(document.getElementById('volunteerLng').value) || null
+                }
             };
             
             try {
@@ -199,12 +335,29 @@
                     body: JSON.stringify(volunteer)
                 });
                 
-                if (response.ok) {
-                    alert('✅ Volunteer registered successfully!');
-                    closeModal('volunteerModal');
-                    loadVolunteers();
-                    document.getElementById('volunteerForm').reset();
-                } else {
+             if (response.ok) {
+    const data = await response.json();
+    alert('✅ Volunteer registered successfully!');
+    // Register service worker first
+async function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            console.log('Service Worker registered:', registration);
+            return registration;
+        } catch (error) {
+            console.error('Service Worker registration failed:', error);
+        }
+    }
+}
+    
+    // 🔔 Ask for notification permission
+    await requestNotificationPermission(data._id);
+    
+    closeModal('volunteerModal');
+    loadVolunteers();
+    document.getElementById('volunteerForm').reset();
+} else {
                     const error = await response.json();
                     alert('Error: ' + error.message);
                 }
@@ -220,5 +373,103 @@
 
         loadVolunteers();
     </script>
+    <!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
+
+<script>
+// REPLACE with your Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyDx6l4ouFfZOy2tIobzz5gia7vp6sPqSO4",
+  authDomain: "disasterresponsesystem-d5545.firebaseapp.com",
+  projectId: "disasterresponsesystem-d5545",
+  storageBucket: "disasterresponsesystem-d5545.firebasestorage.app",
+  messagingSenderId: "205634786457",
+  appId: "1:205634786457:web:fb5036d471e21820189408",
+  measurementId: "G-DM8RM10RXT"
+};
+async function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            console.log('✅ Service Worker registered:', registration);
+            return registration;
+        } catch (error) {
+            console.error('Service Worker registration failed:', error);
+        }
+    }
+}
+
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
+
+// Handle foreground messages
+messaging.onMessage((payload) => {
+  console.log('Foreground message:', payload);
+  showNotificationToast(payload.notification.title, payload.notification.body);
+});
+
+function showNotificationToast(title, body) {
+  // Show an in-app toast notification
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #1a73e8;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    z-index: 9999;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  `;
+  toast.innerHTML = `<strong>${title}</strong><br>${body}`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+
+// Request permission and get token
+async function requestNotificationPermission(volunteerId) {
+  try {
+    // Register service worker
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    console.log('Service Worker registered');
+
+    // Request permission
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      console.log('Notification permission denied');
+      return;
+    }
+
+    // Get token with VAPID key
+    const token = await messaging.getToken({
+      vapidKey: 'BNx2FXpRWXlv1RHSYgdwLlVLqDf7yGTx0VxOWUoc8YfUtB7MoxsQq1AQQyQl5wmLeqt0SOO-d3kC_t14PsWSpek', // REPLACE THIS
+      serviceWorkerRegistration: registration
+    });
+    
+    console.log('FCM Token:', token);
+    
+    // Send token to backend
+    await fetch(`${API_URL}/volunteers/${volunteerId}/fcm-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fcmToken: token })
+    });
+    
+    console.log('✅ Notification enabled!');
+    alert('✅ Notifications enabled! You will receive disaster alerts.');
+  } catch (error) {
+    console.error('Error getting token:', error);
+  }
+}
+
+// Modify submitVolunteer function - call after successful registration
+// Find your existing submitVolunteer function and add this line after saving:
+// await requestNotificationPermission(data._id);
+</script>
 </body>
 </html>

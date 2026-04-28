@@ -6,6 +6,17 @@
     <title>Disasters - Disaster Response AI</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+    .location-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .location-btn:hover {
+        background: #d2e3fc !important;
+    }
+</style>
 </head>
 <body>
     <div class="content-area">
@@ -75,7 +86,7 @@
             </div>
             <div class="modal-body">
                 <form id="disasterForm">
-                    <div class="form-group">
+                    <!-- <div class="form-group">
                         <label>Location *</label>
                         <input type="text" id="disasterLocation" required placeholder="e.g., Downtown, City Center">
                     </div>
@@ -84,7 +95,22 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                             <input type="text" id="disasterLat" placeholder="Latitude">
                             <input type="text" id="disasterLng" placeholder="Longitude">
-                        </div>
+                        </div> -->
+                        <div class="form-group">
+    <label>Location *</label>
+    <input type="text" id="disasterLocation" required placeholder="e.g., Downtown, City Center">
+    <button type="button" class="location-btn" onclick="getDisasterLocation()" style="margin-top: 8px; width: 100%; padding: 8px; background: #e8f0fe; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+        <span class="material-icons" style="font-size: 18px;">my_location</span>
+        📍 Auto-Detect My Location
+    </button>
+</div>
+<div class="form-group">
+    <label>Coordinates (Auto-detected)</label>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <input type="text" id="disasterLat" placeholder="Latitude" readonly style="background: #f5f5f5;">
+        <input type="text" id="disasterLng" placeholder="Longitude" readonly style="background: #f5f5f5;">
+    </div>
+</div>
                     </div>
                     <div class="form-group">
                         <label>Disaster Type *</label>
@@ -136,7 +162,9 @@
     </div>
 
     <script>
-        const API_URL = 'https://disaster-response-system-hd8a.onrender.com/api';
+        // const API_URL = 'https://disaster-response-system-hd8a.onrender.com/api';
+          const API_URL='http://localhost:5001/api';
+
         let currentDisaster = null;
 
         async function loadDisasters() {
@@ -265,6 +293,52 @@
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('active');
         }
+        // Auto-detect disaster location
+function getDisasterLocation() {
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser');
+        return;
+    }
+
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="material-icons">hourglass_top</span> Detecting...';
+    btn.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            document.getElementById('disasterLat').value = lat;
+            document.getElementById('disasterLng').value = lng;
+            
+            // Reverse geocode to get address
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                .then(res => res.json())
+                .then(data => {
+                    const address = data.display_name || `${lat}, ${lng}`;
+                    document.getElementById('disasterLocation').value = address;
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    alert('✅ Location detected successfully!');
+                })
+                .catch(() => {
+                    document.getElementById('disasterLocation').value = `${lat}, ${lng}`;
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    alert('✅ Location coordinates captured!');
+                });
+        },
+        (error) => {
+            console.error('Location error:', error);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            alert('Unable to get location. Please enter manually.');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
 
         async function submitDisaster() {
             const disaster = {
@@ -288,12 +362,56 @@
                     body: JSON.stringify(disaster)
                 });
                 
-                if (response.ok) {
-                    alert('✅ Disaster registered successfully!');
-                    closeModal('disasterModal');
-                    loadDisasters();
-                    document.getElementById('disasterForm').reset();
-                } else {
+             
+    if (response.ok) {
+    const data = await response.json();
+    
+    // Create VISIBLE popup on screen
+    const popup = document.createElement('div');
+    popup.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: linear-gradient(135deg, #d93025, #ea4335);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        max-width: 350px;
+        cursor: pointer;
+        font-family: 'Google Sans', Arial, sans-serif;
+    `;
+    popup.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span style="font-size: 24px;">🚨</span>
+            <strong style="font-size: 18px;">NEW DISASTER ALERT!</strong>
+        </div>
+        <div style="font-size: 14px; line-height: 1.5;">
+            📍 ${disaster.location}<br>
+            🔥 Type: ${disaster.type.toUpperCase()}<br>
+            👥 People: ${disaster.peopleAffected}<br>
+            ⚡ Urgency: ${disaster.urgency.toUpperCase()}
+        </div>
+        <hr style="margin: 10px 0; border-color: rgba(255,255,255,0.3);">
+        <small>⚠️ Nearby volunteers have been notified! Click to assign →</small>
+    `;
+    popup.onclick = () => {
+        window.location.href = `allocation.html?disaster=${data._id}`;
+    };
+    document.body.appendChild(popup);
+    
+    // Auto remove after 10 seconds
+    setTimeout(() => popup.remove(), 10000);
+    
+    alert('✅ Disaster registered successfully!');
+    closeModal('disasterModal');
+    loadDisasters();
+    document.getElementById('disasterForm').reset();
+}
+    // Test notification
+   else {
                     const error = await response.json();
                     alert('Error: ' + error.message);
                 }

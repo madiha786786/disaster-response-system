@@ -4,8 +4,42 @@ const Disaster = require('../models/Disaster');
 const Volunteer = require('../models/Volunteer');
 const Assignment = require('../models/Assignment');
 const scoringEngine = require('../utils/scoringEngine');
+const geminiService = require('../services/geminiService');
 
 // Get best volunteer for a disaster
+// Add this at the TOP of the file (with other requires)
+
+
+// ✅ ADD THIS NEW ROUTE - Place it BEFORE module.exports
+router.post('/ai-recommend/:disasterId', async (req, res) => {
+    try {
+        console.log('🤖 AI Request received for disaster:', req.params.disasterId);
+        
+        const disaster = await Disaster.findById(req.params.disasterId);
+        if (!disaster) {
+            return res.status(404).json({ message: 'Disaster not found' });
+        }
+        
+        const volunteers = await Volunteer.find({ 
+            availability: 'free',
+            status: 'active'
+        });
+        
+        console.log(`📊 Found ${volunteers.length} available volunteers`);
+        
+        // Get Gemini AI recommendation
+        const aiRecommendation = await geminiService.getVolunteerRecommendation(disaster, volunteers);
+        
+        res.json({
+            disaster,
+            aiRecommendation,
+            availableVolunteersCount: volunteers.length
+        });
+    } catch (error) {
+        console.error('AI Recommendation Error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
 router.get('/recommend/:disasterId', async (req, res) => {
     try {
         const disaster = await Disaster.findById(req.params.disasterId);
@@ -175,5 +209,35 @@ router.post('/auto-assign', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+// Chat with Gemini AI
+router.post('/chat', async (req, res) => {
+    try {
+        const { message, disasterId } = req.body;
+        
+        if (!message) {
+            return res.status(400).json({ reply: "Please ask something!" });
+        }
+        
+        // Get disaster context if a disaster is selected
+        let context = "";
+        if (disasterId) {
+            const disaster = await Disaster.findById(disasterId);
+            if (disaster) {
+                context = `\n\nCurrent disaster context:\n- Type: ${disaster.type}\n- Location: ${disaster.location}\n- People affected: ${disaster.peopleAffected}\n- Urgency: ${disaster.urgency}\n`;
+            }
+        }
+        
+        const prompt = `You are an AI disaster response assistant. Be helpful, concise, and practical.${context}\n\nUser question: ${message}\n\nProvide a brief, actionable response (max 3 sentences).`;
+        
+        const result = await geminiService.chat(prompt);
+        
+        res.json({ reply: result });
+    } catch (error) {
+        console.error('Chat Error:', error);
+        res.json({ reply: "Sorry, I'm having trouble right now. Please try again." });
+    }
+});
+// Add this new AI endpoint
+// ✅ ADD THIS NEW ROUTE - Place it BEFORE module.exports
 
 module.exports = router;

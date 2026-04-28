@@ -72,5 +72,25 @@ router.delete('/:id', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
-
+// Store FCM token for volunteer
+// router.post('/:id/fcm-token', async (req, res) => {
+//     try {
+//         const { fcmToken } = req.body;
+//         await Volunteer.findByIdAndUpdate(req.params.id, { fcmToken });
+//         res.json({ success: true });
+//     } catch (error) {
+//         res.status(500).json({ message: error.message });
+//     }
+// });
+// Add this new route in volunteers.js
+router.post('/:id/fcm-token', async (req, res) => {
+    try {
+        const { fcmToken } = req.body;
+        await Volunteer.findByIdAndUpdate(req.params.id, { fcmToken });
+        console.log(`✅ FCM token saved for volunteer ${req.params.id}`);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 module.exports = router;
