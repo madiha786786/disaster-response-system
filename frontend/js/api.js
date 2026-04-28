@@ -1,5 +1,6 @@
 // API Configuration
-const API_URL = 'http://localhost:5001/api';
+// const API_URL = 'http://localhost:5001/api';
+  const API_URL = 'https://disaster-response-system-hd8a.onrender.com/api';
 
 // Helper function for API calls
 async function apiCall(endpoint, method = 'GET', data = null) {
