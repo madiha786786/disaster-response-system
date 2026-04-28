@@ -6,7 +6,7 @@
     <title>Disasters - Disaster Response AI</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <style>
+    <!-- <style>
     .location-btn {
         display: flex;
         align-items: center;
@@ -15,6 +15,119 @@
     }
     .location-btn:hover {
         background: #d2e3fc !important;
+    }
+</style> -->
+<style>
+    /* Clean Minimal Variables */
+    :root {
+        --primary-blue: #1a73e8;
+        --hover-blue: #f8faff;
+        --border-color: #dadce0;
+        --text-main: #3c4043;
+    }
+
+    /* Modal Smoothing */
+    .modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(32, 33, 36, 0.6);
+        backdrop-filter: blur(2px);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        overflow: hidden;
+        transform: translateY(0);
+        transition: transform 0.3s ease;
+    }
+
+    /* Form Styling */
+    .modal-body {
+        padding: 24px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-main);
+        margin-bottom: 8px;
+    }
+
+    .form-group input, 
+    .form-group select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 15px;
+        transition: border-color 0.2s;
+        box-sizing: border-box; /* Prevents overflow */
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 2px rgba(26,115,232,0.1);
+    }
+
+    /* Auto-Detect Button Styling */
+    .location-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        margin-top: 10px;
+        padding: 8px;
+        background: var(--hover-blue);
+        color: var(--primary-blue);
+        border: 1px dashed var(--primary-blue);
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .location-btn:hover {
+        background: #e8f0fe;
+    }
+
+    /* Coordinate Grid */
+    .coords-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .read-only-input {
+        background-color: #f8f9fa;
+        color: #70757a;
+        cursor: not-allowed;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 </style>
 </head>
@@ -79,69 +192,68 @@
 
     <!-- Add Disaster Modal -->
     <div id="disasterModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Register New Disaster</h3>
-                <span class="material-icons" onclick="closeModal('disasterModal')" style="cursor: pointer;">close</span>
-            </div>
-            <div class="modal-body">
-                <form id="disasterForm">
-                    <!-- <div class="form-group">
-                        <label>Location *</label>
-                        <input type="text" id="disasterLocation" required placeholder="e.g., Downtown, City Center">
+    <div class="modal-content" style="display: flex; flex-direction: column; max-height: 90vh;">
+        <div class="modal-header" style="padding: 16px 24px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+            <h3 style="margin: 0; font-weight: 500;">Register New Disaster</h3>
+            <span class="material-icons" onclick="closeModal('disasterModal')" style="cursor: pointer; color: #5f6368;">close</span>
+        </div>
+        
+        <div class="modal-body" style="padding: 24px; overflow-y: auto; flex-grow: 1;">
+            <form id="disasterForm">
+                <div class="form-group">
+                    <label>Incident Location *</label>
+                    <input type="text" id="disasterLocation" required placeholder="Street, area, or landmark">
+                    <button type="button" class="location-btn" onclick="getDisasterLocation()">
+                        <span class="material-icons" style="font-size: 18px;">my_location</span>
+                        Auto-Detect My Location
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label>GPS Coordinates</label>
+                    <div class="coords-grid">
+                        <input type="text" id="disasterLat" placeholder="Latitude" readonly class="read-only-input">
+                        <input type="text" id="disasterLng" placeholder="Longitude" readonly class="read-only-input">
                     </div>
-                    <div class="form-group">
-                        <label>Coordinates (Optional)</label>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <input type="text" id="disasterLat" placeholder="Latitude">
-                            <input type="text" id="disasterLng" placeholder="Longitude">
-                        </div> -->
-                        <div class="form-group">
-    <label>Location *</label>
-    <input type="text" id="disasterLocation" required placeholder="e.g., Downtown, City Center">
-    <button type="button" class="location-btn" onclick="getDisasterLocation()" style="margin-top: 8px; width: 100%; padding: 8px; background: #e8f0fe; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
-        <span class="material-icons" style="font-size: 18px;">my_location</span>
-        📍 Auto-Detect My Location
-    </button>
-</div>
-<div class="form-group">
-    <label>Coordinates (Auto-detected)</label>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <input type="text" id="disasterLat" placeholder="Latitude" readonly style="background: #f5f5f5;">
-        <input type="text" id="disasterLng" placeholder="Longitude" readonly style="background: #f5f5f5;">
+                    <small style="color: #70757a; font-size: 11px; margin-top: 4px; display: block;">Populated via auto-detection</small>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid #f1f3f4; margin: 20px 0;">
+
+                <div class="form-group">
+                    <label>Disaster Type *</label>
+                    <select id="disasterType" required>
+                        <option value="rescue">Rescue Operation</option>
+                        <option value="flood">Flood</option>
+                        <option value="medical">Medical Emergency</option>
+                        <option value="fire">Fire</option>
+                        <option value="accident">Accident</option>
+                        <option value="food">Food Distribution</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Urgency Level *</label>
+                    <select id="disasterUrgency" required>
+                        <option value="high">High - Immediate Response</option>
+                        <option value="medium">Medium - Within the hour</option>
+                        <option value="low">Low - General Assistance</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label>People Affected *</label>
+                    <input type="number" id="disasterPeople" required min="1" placeholder="Enter estimated count">
+                </div>
+            </form>
+        </div>
+
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 12px; background: #f8f9fa; flex-shrink: 0;">
+            <button class="btn btn-outline" onclick="closeModal('disasterModal')" style="border: none; background: transparent; cursor: pointer;">Cancel</button>
+            <button class="btn btn-primary" onclick="submitDisaster()" style="padding: 10px 24px; border-radius: 8px; cursor: pointer; background-color: var(--primary-blue); color: white; border: none; font-weight: 500;">Register Disaster</button>
+        </div>
     </div>
 </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Disaster Type *</label>
-                        <select id="disasterType" required>
-                            <option value="rescue">Rescue Operation</option>
-                            <option value="flood">Flood</option>
-                            <option value="medical">Medical Emergency</option>
-                            <option value="fire">Fire</option>
-                            <option value="accident">Accident</option>
-                            <option value="food">Food Distribution</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Urgency Level *</label>
-                        <select id="disasterUrgency" required>
-                            <option value="high">High - Immediate Response Needed</option>
-                            <option value="medium">Medium - Respond Within Hour</option>
-                            <option value="low">Low - Can Wait</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>People Affected *</label>
-                        <input type="number" id="disasterPeople" required min="1" placeholder="Number of people affected">
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="closeModal('disasterModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="submitDisaster()">Register Disaster</button>
-            </div>
-        </div>
     </div>
 
     <!-- Disaster Detail Modal -->
