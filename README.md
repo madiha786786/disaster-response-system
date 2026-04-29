@@ -44,6 +44,12 @@ The core matching logic is based on a weighted score out of 100:
 
 Priority scoring for disasters is dynamically calculated based on `Urgency` and `People Affected`.
 
+<img width="1920" height="992" alt="{FFC75E93-2952-4CAF-926A-A041712C3FB1}" src="https://github.com/user-attachments/assets/5181cb51-fbfa-4aeb-adac-949d1f691c8e" />
+
+<img width="902" height="909" alt="{F40F6B98-8A38-425E-BC36-4F6C499E7F0B}" src="https://github.com/user-attachments/assets/0de867d1-5eb7-4236-8a50-ac8af58324c9" />
+<img width="1914" height="945" alt="{4DDB4A9C-CF11-47B6-88EE-3AA0C26B99CF}" src="https://github.com/user-attachments/assets/10adc298-0ae2-48cb-937b-5106530cdb74" />
+
+
 ## 👥 Team
 
 **Team Leader:** Madiha Fatima
