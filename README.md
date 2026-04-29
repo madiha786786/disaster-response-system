@@ -44,10 +44,6 @@ The core matching logic is based on a weighted score out of 100:
 
 Priority scoring for disasters is dynamically calculated based on `Urgency` and `People Affected`.
 
-## 🖼️ Screenshots (Optional but Recommended)
-
-*(You should add 2-3 key screenshots here, e.g., the Dashboard and the Smart Allocation page)*
-
 ## 👥 Team
 
 **Team Leader:** Madiha Fatima
