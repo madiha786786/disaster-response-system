@@ -52,7 +52,7 @@ Priority scoring for disasters is dynamically calculated based on `Urgency` and 
 
 ## 👥 Team
 
-**Team Leader:** Madiha Fatima
+
 
 **Problem Statement:** AI-Based Real-Time Disaster & Emergency Response System
 
